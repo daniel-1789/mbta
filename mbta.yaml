@@ -1,0 +1,2 @@
+get_routes: https://api-v3.mbta.com/routes
+get_stops: https://api-v3.mbta.com/stops
