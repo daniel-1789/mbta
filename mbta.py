@@ -11,6 +11,11 @@ class MbtaErrorCodes(Enum):
     BadArgs = 4
 
 def print_all_lines(get_routes_url):
+    """
+    Query the mbta api to get a list of the ids and names of all subway lines
+    :param get_routes_url: api url for routes (made a param for unit testing to force failure)
+    :return: MbtaErrorCodes enum - Success, NoOutput (200 response but no data), Non200Resp
+    """
     rc = MbtaErrorCodes.Success
     # adjust the payload to only have what we need, sort it by id
     payload = {'filter[type]': '0,1', 'fields[route]': 'long_name,id', 'sort': 'id'}
@@ -30,8 +35,14 @@ def print_all_lines(get_routes_url):
     return MbtaErrorCodes.Success
 
 def print_stops(get_stops_url, line_id):
-    # adjust the payload to only have what we need, filter by line. Do not sort as data is in correct order
+    """
+    Query the mbta api to get a list of all the stops for the given line_id
+    :param get_stops_url: api url (made a param for unit testing to force failure)
+    :param line_id: string representing id of a line (i.e. Red, Green-B, etc.)
+    :return: MbtaErrorCodes enum - Success, NoOutput (200 response but no data), Non200Resp
+    """
 
+    # adjust the payload to only have what we need, filter by line. Do not sort as data is in correct order
     payload = {'filter[route]': line_id, 'fields[stop]': 'name'}
 
     resp = requests.get(get_stops_url, payload)
@@ -56,6 +67,7 @@ def print_stops(get_stops_url, line_id):
 def usage_message(custom_message=None):
     """
     Simple usage message.
+    :param custom_message: Any additional text beyond usage instructions
     :return:
     """
     if custom_message is not None:
@@ -66,6 +78,12 @@ def usage_message(custom_message=None):
     print('mbta --help')
 
 def main(args):
+    """
+    Main function to take command line parameters and execute proper api calls for getting routes and stops
+    :param args: argv from command line
+    :return: MbtaErrorCodes - Success, NoArgs (no arguments passed), BadArgs (bad arguments passed or extra
+        parameters given), or the results of the call to the MBTA API.
+    """
     with open(r'mbta.yaml') as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
