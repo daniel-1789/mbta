@@ -84,6 +84,7 @@ def main(args):
     :return: MbtaErrorCodes - Success, NoArgs (no arguments passed), BadArgs (bad arguments passed or extra
         parameters given), or the results of the call to the MBTA API.
     """
+    # get the api urls from the mbta.yaml, make sure all the proper keys are present.
     try:
         with open(r'mbta.yaml') as file:
             api_dict = yaml.load(file, Loader=yaml.FullLoader)
@@ -119,8 +120,6 @@ def main(args):
     else:
         usage_message()
         return MbtaErrorCodes.BadArgs
-
-
 
 if __name__ == "__main__":
     main(sys.argv)
