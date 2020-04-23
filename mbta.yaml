@@ -1,2 +1,3 @@
-get_routes: https://api-v3.mbta.com/routes
+# simple data for a python dictionary to store the URLs mbta.py will need to access.
+get_lines: https://api-v3.mbta.com/routes
 get_stops: https://api-v3.mbta.com/stops

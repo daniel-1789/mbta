@@ -73,8 +73,8 @@ def usage_message(custom_message=None):
     if custom_message is not None:
         print(custom_message)
     print('Usage: ')
-    print('mbta --get-routes')
-    print('mbta --get-stops route_id')
+    print('mbta --get-lines')
+    print('mbta --get-stops <line_id>')
     print('mbta --help')
 
 def main(args):
@@ -84,20 +84,29 @@ def main(args):
     :return: MbtaErrorCodes - Success, NoArgs (no arguments passed), BadArgs (bad arguments passed or extra
         parameters given), or the results of the call to the MBTA API.
     """
-    with open(r'mbta.yaml') as file:
-        # The FullLoader parameter handles the conversion from YAML
-        # scalar values to Python the dictionary format
-        api_dict = yaml.load(file, Loader=yaml.FullLoader)
+    try:
+        with open(r'mbta.yaml') as file:
+            api_dict = yaml.load(file, Loader=yaml.FullLoader)
+    except:
+        print('Error - missing needed mbta.yaml file')
+        raise
+
+    try:
+        api_dict['get_stops']
+        api_dict['get_lines']
+    except:
+        print('Error - api_dict missing needed keys')
+        raise
 
     if len(args) < 2:
         usage_message('At least one option required')
         return MbtaErrorCodes.NoArgs
     curr_arg = args[1]
-    if curr_arg == '--get-routes':
+    if curr_arg == '--get-lines':
         if len(args) != 2:
             usage_message('--get-routes has no parameters')
             return MbtaErrorCodes.BadArgs
-        return print_all_lines(api_dict['get_routes'])
+        return print_all_lines(api_dict['get_lines'])
     elif curr_arg == '--get-stops':
         if len(args) != 3:
             usage_message('--get-stops requires a single parameter')
