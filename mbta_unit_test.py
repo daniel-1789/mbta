@@ -27,17 +27,18 @@ class MbtaUnitTest(unittest.TestCase):
         rc = print_all_lines(self.api_dict['get_lines']+'foo')
         self.assertEqual(MbtaErrorCodes.Non200Resp, rc)
 
-    def test_get_stops_red(self):
+    def test_get_stops_all_known_lines(self):
         """
         Get all stops for all the known lines - would need to update this if new lines added
         :return:
         """
-        known_lines =  ['Blue', 'Green-B', 'Green-C', 'Green-D', 'Mattapan', 'Orange', 'Red']
+        known_lines = ['Blue', 'Green-B', 'Green-C', 'Green-D', 'Green-E', 'Mattapan', 'Orange', 'Red']
         for line in known_lines:
+            print('--- Stops for line {} ---'.format(line))
             rc = print_stops(self.api_dict['get_stops'], line)
             self.assertEqual(MbtaErrorCodes.Success, rc)
 
-    def test_get_lines_bad_url(self):
+    def test_get_stops_bad_url(self):
         """
         Corrupt the url for the get_stops.
         :return:

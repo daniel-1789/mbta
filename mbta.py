@@ -1,7 +1,13 @@
+import os
 import requests
 import yaml
 import sys
 from enum import Enum
+
+# MBTA API key from env (unauthenticated callers are rate-limited to 20 req/min;
+# a registered key raises this to 1000 req/min). Register at https://api-v3.mbta.com/register
+_API_KEY = os.environ.get('MBTA_API_KEY')
+_HEADERS = {'x-api-key': _API_KEY} if _API_KEY else {}
 
 class MbtaErrorCodes(Enum):
     Success = 0
@@ -19,7 +25,7 @@ def print_all_lines(get_routes_url):
     rc = MbtaErrorCodes.Success
     # adjust the payload to only have what we need, sort it by id
     payload = {'filter[type]': '0,1', 'fields[route]': 'long_name,id', 'sort': 'id'}
-    resp = requests.get(get_routes_url, payload)
+    resp = requests.get(get_routes_url, payload, headers=_HEADERS)
     if resp.status_code != 200:
         # This means something went wrong.
         print('Problem getting data from MBTA. Please try again or contact support.')
@@ -45,7 +51,7 @@ def print_stops(get_stops_url, line_id):
     # adjust the payload to only have what we need, filter by line. Do not sort as data is in correct order
     payload = {'filter[route]': line_id, 'fields[stop]': 'name'}
 
-    resp = requests.get(get_stops_url, payload)
+    resp = requests.get(get_stops_url, payload, headers=_HEADERS)
 
     if resp.status_code != 200:
         # This means something went wrong.
