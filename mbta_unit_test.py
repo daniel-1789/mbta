@@ -1,5 +1,5 @@
 import unittest
-from mbta import MbtaErrorCodes, print_all_lines, print_stops, main
+from cli import MbtaErrorCodes, print_all_lines, print_stops, main
 import yaml
 
 class MbtaUnitTest(unittest.TestCase):

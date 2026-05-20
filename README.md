@@ -8,11 +8,12 @@ Mainly done as an experimentation exercise and to get some experience using Fast
 
 | File | Purpose |
 | --- | --- |
-| `mbta.py` | Core fetch logic (sync + async) and the CLI entry point. |
-| `api.py` | FastAPI app — thin HTTP layer over `mbta.py`. |
+| `mbta_client.py` | Domain layer — sync + async fetchers and exception types. |
+| `cli.py` | Command-line entry point. Calls into `mbta_client`. |
+| `api.py` | FastAPI app — thin HTTP layer over `mbta_client`. |
 | `mbta.yaml` | Upstream MBTA URLs, loaded at startup by both entry points. |
-| `mbta_unit_test.py` | Unit tests for the CLI fetch path. |
-| `mbta` | Shell wrapper that invokes `python3 mbta.py "$@"`. |
+| `mbta_unit_test.py` | Unit tests for the CLI path. |
+| `mbta` | Shell wrapper that invokes `python3 cli.py "$@"`. |
 | `requirements.txt` | Pinned dependencies. |
 
 ## Install
@@ -50,12 +51,12 @@ Error handling:
 ## CLI
 
 ```shell
-python mbta.py --get-lines
-python mbta.py --get-stops Red
-python mbta.py --help
+python cli.py --get-lines
+python cli.py --get-stops Red
+python cli.py --help
 ```
 
-Or via the shell wrapper (`./mbta --get-lines`). Exit/return codes are defined by `MbtaErrorCodes` in `mbta.py`.
+Or via the shell wrapper (`./mbta --get-lines`). Exit/return codes are defined by `MbtaErrorCodes` in `cli.py`.
 
 ## Tests
 
@@ -66,6 +67,6 @@ python -m unittest mbta_unit_test.py
 ## Design notes
 
 - The MBTA `/routes` and `/stops` responses are large; requests pin `fields[...]` to only what the models need, keeping payloads small.
-- `mbta.py` exposes parallel sync/async fetchers (`fetch_lines` / `async_fetch_lines`, `fetch_stops` / `async_fetch_stops`) so the CLI can keep using `requests` while FastAPI uses `httpx` inside the event loop. Both share one row-mapping helper to keep the response shape consistent.
+- `mbta_client.py` exposes parallel sync/async fetchers (`fetch_lines` / `async_fetch_lines`, `fetch_stops` / `async_fetch_stops`) so the CLI can keep using `requests` while FastAPI uses `httpx` inside the event loop. Both share one row-mapping helper to keep the response shape consistent.
 - Upstream errors raise `MbtaUpstreamError`; "found nothing for this line id" raises `MbtaNotFoundError`. The CLI catches these and prints user-facing messages; the API translates them into 502/404.
 - Lines are sorted by id for stable output; stops are returned in the upstream's order, which matches the MBTA map ordering.
