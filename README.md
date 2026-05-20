@@ -1,98 +1,69 @@
 # mbta
-## User Documentation
-### Usage
+
+A small Python wrapper around the [MBTA v3 API](https://api-v3.mbta.com/) that exposes Boston's subway lines and their stops two ways: as an HTTP service and as a CLI.
+
+## Layout
+
+| File | Purpose |
+| --- | --- |
+| `mbta.py` | Core fetch logic (sync + async) and the CLI entry point. |
+| `api.py` | FastAPI app — thin HTTP layer over `mbta.py`. |
+| `mbta.yaml` | Upstream MBTA URLs, loaded at startup by both entry points. |
+| `mbta_unit_test.py` | Unit tests for the CLI fetch path. |
+| `mbta` | Shell wrapper that invokes `python3 mbta.py "$@"`. |
+| `requirements.txt` | Pinned dependencies. |
+
+## Install
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
-mbta --get-lines
-mbta --get-stops <line_id>
-mbta --help
+
+Optional: set `MBTA_API_KEY` in your environment to lift the upstream rate limit from 20 req/min to 1000 req/min. Register a key at <https://api-v3.mbta.com/register>.
+
+## HTTP service
+
+Launch with uvicorn from the project root (the app reads `mbta.yaml` relative to the working directory):
+
+```shell
+uvicorn api:app --reload
 ```
 
-### Installing/Using the Program
-This can be called from either the command line or an IDE.
+Interactive OpenAPI docs are served at `/docs`.
 
-If called from the command line it can be called by using the python command followed by mbta.py.
+### Endpoints
 
-Examples (depending on if your environment needs to explicitly specify Python 3):
-```shell script
+| Method | Path | Returns |
+| --- | --- | --- |
+| `GET` | `/healthz` | `{"status": "ok"}` |
+| `GET` | `/lines` | List of subway lines with full detail (id, names, color/text_color, type, direction names + destinations, description). |
+| `GET` | `/lines/{line_id}/stops` | Ordered list of stops for the given line (`Red`, `Green-B`, etc.). |
+
+Error handling:
+- `502` if the MBTA upstream returns a non-200.
+- `404` if the line id is unknown (no stops returned).
+
+## CLI
+
+```shell
+python mbta.py --get-lines
 python mbta.py --get-stops Red
-python3 mbta.py --get-stops Red
-```
- 
-A very basic shell script, `mbta`, has been 
-provided, which simply makes a Python3 call to 
-trigger the script, passing to it all 
-command-line arguments. Depending on your 
-environment you might need to remove the 3 
-from the internals of the script (i.e. if your 
-interpreter treats a python call as being to 
-Python3)
-
-
-A virtual environment for the setup has been 
-provided. It would also be fairly simple 
-to use this without a virtual environment or to 
-create your own, you would simply need to install 
-the needed libraries. For example, the following 
-should do it:
-```shell script
-pip install PyYAML
-pip install requests
-
--- or --
-pip3 install PyYAML
-pip3 install requests
-```
-Presumably sys and enum will already be installed.
-
-To activate the venv you could simply do from the
-directory.
-```shell script
-source activate venv/bin/activate
+python mbta.py --help
 ```
 
-## Homework Notes
+Or via the shell wrapper (`./mbta --get-lines`). Exit/return codes are defined by `MbtaErrorCodes` in `mbta.py`.
 
-I tried to keep this a simple program. One optimization I made is
-the MBTA API gives a ton of information - far more than we 
-needed. I made certain that we only got the needed
-data from the MBTA API, greatly reducing the amount
-of data this program needs to ingest. While I went for 
-a simple command line interface, one thing I kept in
-mind is if this were functioning as a microservice
-or if it were running from a mobile device, you'd 
-definitely want to mimimize the amount of data it
-consumes.
+## Tests
 
-One thing I wrestled with was the use of `mbta.yaml` to store
-the URL's for the API. It's not essentially required but 
-given I access those URLs in two separate files (the main
-Python program and the Unit Test one) it seemed reasonable
-to pull in the data from a common source. That said, the only 
-real reason I needed to pass the URL to `print_all_lines`
-and `print_stops` was I wanted the Unit Test to be able
-to pass a bogus URL to the MBTA API in order to force
-a non-200 response from the API. It
-seemed important to be able to force bad responses
-from the API. It's the sort of thing I'd definitely
-be asking for input on from code reviewers as it
-does introduce a vulnerability if the yaml file were
-to be missing.
+```shell
+python -m unittest mbta_unit_test.py
+```
 
-I made the decision to alphabetize the IDs for the
-`--get-lines` command. However, the order of the
-stops in the `--get-stops` command corresponded to the
-ordering on the real MBTA maps so it seemed important
-to preserve that.
+## Design notes
 
-I did give some thought to allowing `--get-stops` to
-accept multiple lines as input but that was beyond
-the scope of the requirements. It would be a 
-fairly simple enhancement to make.
-
-As I was a daily rider of the Commuter Rail when I 
-was working at Toast, at least until everyone had to 
-work from home, I was a frequent user of the 3rd-party
-`MBTA Rail` mobile app and I really enjoyed getting
-insight as to how that and similar apps gather their
-data. I was fairly impressed by the amount of data
-available from the MBTA.
+- The MBTA `/routes` and `/stops` responses are large; requests pin `fields[...]` to only what the models need, keeping payloads small.
+- `mbta.py` exposes parallel sync/async fetchers (`fetch_lines` / `async_fetch_lines`, `fetch_stops` / `async_fetch_stops`) so the CLI can keep using `requests` while FastAPI uses `httpx` inside the event loop. Both share one row-mapping helper to keep the response shape consistent.
+- Upstream errors raise `MbtaUpstreamError`; "found nothing for this line id" raises `MbtaNotFoundError`. The CLI catches these and prints user-facing messages; the API translates them into 502/404.
+- Lines are sorted by id for stable output; stops are returned in the upstream's order, which matches the MBTA map ordering.
