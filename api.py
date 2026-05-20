@@ -2,7 +2,7 @@ import yaml
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from mbta import (
+from mbta_client import (
     async_fetch_lines,
     async_fetch_stops,
     MbtaUpstreamError,

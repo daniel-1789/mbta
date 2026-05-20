@@ -1,8 +1,5 @@
 import os
 import requests
-import yaml
-import sys
-from enum import Enum
 import httpx
 
 # MBTA API key from env (unauthenticated callers are rate-limited to 20 req/min;
@@ -15,17 +12,10 @@ class MbtaUpstreamError(Exception):
     """Raised when the MBTA API returns a non-200 response."""
     pass
 
+
 class MbtaNotFoundError(Exception):
     """Raised when the MBTA API returns 200 but no matching data."""
     pass
-
-
-class MbtaErrorCodes(Enum):
-    Success = 0
-    NoOutput = 1
-    Non200Resp = 2
-    NoArgs = 3
-    BadArgs = 4
 
 
 _LINE_FIELDS = 'long_name,short_name,color,text_color,description,type,direction_names,direction_destinations'
@@ -73,22 +63,6 @@ async def async_fetch_lines(get_routes_url):
     return [_line_row(r) for r in data]
 
 
-def print_all_lines(get_routes_url):
-    """
-    CLI helper: fetch lines and print them. Returns MbtaErrorCodes.
-    """
-    try:
-        lines = fetch_lines(get_routes_url)
-    except MbtaUpstreamError:
-        print('Problem getting data from MBTA. Please try again or contact support.')
-        return MbtaErrorCodes.Non200Resp
-    if not lines:
-        return MbtaErrorCodes.NoOutput
-    for line in lines:
-        print('ID: {}, NAME: {}'.format(line['id'], line['long_name']))
-    return MbtaErrorCodes.Success
-
-
 def fetch_stops(get_stops_url, line_id):
     """
     Fetch stops for a given line. Returns list of {'id', 'name'} dicts.
@@ -103,6 +77,7 @@ def fetch_stops(get_stops_url, line_id):
         raise MbtaNotFoundError("No stops found for line '{}'".format(line_id))
     return [{'id': s['id'], 'name': s['attributes']['name']} for s in data]
 
+
 async def async_fetch_stops(get_stops_url, line_id):
     """
     Async version of fetch_stops.
@@ -116,82 +91,3 @@ async def async_fetch_stops(get_stops_url, line_id):
     if not data:
         raise MbtaNotFoundError("No stops found for line '{}'".format(line_id))
     return [{'id': s['id'], 'name': s['attributes']['name']} for s in data]
-
-
-def print_stops(get_stops_url, line_id):
-    """
-    CLI helper: fetch stops for a line and print them. Returns MbtaErrorCodes.
-    """
-    try:
-        stops = fetch_stops(get_stops_url, line_id)
-    except MbtaUpstreamError:
-        print('Problem getting data from MBTA. Please try again or contact support.')
-        return MbtaErrorCodes.Non200Resp
-    except MbtaNotFoundError:
-        print("No stops found for line ID '{}'. Please verify the line ID and remember they are case-sensitive".format(
-            line_id))
-        return MbtaErrorCodes.NoOutput
-    for stop in stops:
-        print(stop['name'])
-    return MbtaErrorCodes.Success
-
-
-def usage_message(custom_message=None):
-    """
-    Simple usage message.
-    :param custom_message: Any additional text beyond usage instructions
-    :return:
-    """
-    if custom_message is not None:
-        print(custom_message)
-    print('Usage: ')
-    print('mbta --get-lines')
-    print('mbta --get-stops <line_id>')
-    print('mbta --help')
-
-def main(args):
-    """
-    Main function to take command line parameters and execute proper api calls for getting routes and stops
-    :param args: argv from command line
-    :return: MbtaErrorCodes - Success, NoArgs (no arguments passed), BadArgs (bad arguments passed or extra
-        parameters given), or the results of the call to the MBTA API.
-    """
-    # get the api urls from the mbta.yaml, make sure all the proper keys are present.
-    try:
-        with open(r'mbta.yaml') as file:
-            api_dict = yaml.load(file, Loader=yaml.FullLoader)
-    except:
-        print('Error - missing needed mbta.yaml file')
-        raise
-
-    try:
-        api_dict['get_stops']
-        api_dict['get_lines']
-    except:
-        print('Error - api_dict missing needed keys')
-        raise
-
-    if len(args) < 2:
-        usage_message('At least one option required')
-        return MbtaErrorCodes.NoArgs
-    curr_arg = args[1]
-    if curr_arg == '--get-lines':
-        if len(args) != 2:
-            usage_message('--get-routes has no parameters')
-            return MbtaErrorCodes.BadArgs
-        return print_all_lines(api_dict['get_lines'])
-    elif curr_arg == '--get-stops':
-        if len(args) != 3:
-            usage_message('--get-stops requires a single parameter')
-            return MbtaErrorCodes.BadArgs
-        line_id = args[2]
-        return print_stops(api_dict['get_stops'], line_id)
-    elif curr_arg == '--help':
-        usage_message()
-        return MbtaErrorCodes.Success
-    else:
-        usage_message()
-        return MbtaErrorCodes.BadArgs
-
-if __name__ == "__main__":
-    main(sys.argv)
