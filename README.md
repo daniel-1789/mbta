@@ -2,7 +2,7 @@
 
 A small Python wrapper around the [MBTA v3 API](https://api-v3.mbta.com/) that exposes Boston's subway lines and their stops two ways: as an HTTP service and as a CLI.
 
-Mainly done as an experimentation exercise and to get some experience using FastAPI. Realistically putting an API in front of an API isn't really needed but this was a nice learning opportunity to grok the async functionality of FastAPI.
+Mainly done as an experimentation exercise and to get some experience using FastAPI. Realistically putting an API in front of the MBTA's API isn't really needed but this was a nice learning opportunity to grok the async functionality of FastAPI.
 
 ## Layout
 
