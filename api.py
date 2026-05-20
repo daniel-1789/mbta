@@ -1,5 +1,8 @@
+from contextlib import asynccontextmanager
+
+import httpx
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
 from mbta_client import (
@@ -35,11 +38,25 @@ class Stop(BaseModel):
     name: str
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # One shared AsyncClient for the lifetime of the app — reuses the
+    # connection pool across all upstream MBTA requests.
+    async with httpx.AsyncClient() as client:
+        app.state.http_client = client
+        yield
+
+
 app = FastAPI(
     title="MBTA Service",
     description="HTTP wrapper around the MBTA v3 API",
     version="0.1.0",
+    lifespan=lifespan,
 )
+
+
+def get_client(request: Request) -> httpx.AsyncClient:
+    return request.app.state.http_client
 
 
 @app.get("/healthz")
@@ -48,17 +65,17 @@ def healthz():
 
 
 @app.get("/lines", response_model=list[LineDetail])
-async def get_lines():
+async def get_lines(client: httpx.AsyncClient = Depends(get_client)):
     try:
-        return await async_fetch_lines(_API_URLS['get_lines'])
+        return await async_fetch_lines(client, _API_URLS['get_lines'])
     except MbtaUpstreamError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/lines/{line_id}/stops", response_model=list[Stop])
-async def get_stops_for_line(line_id: str):
+async def get_stops_for_line(line_id: str, client: httpx.AsyncClient = Depends(get_client)):
     try:
-        return await async_fetch_stops(_API_URLS['get_stops'], line_id)
+        return await async_fetch_stops(client, _API_URLS['get_stops'], line_id)
     except MbtaUpstreamError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except MbtaNotFoundError as e:

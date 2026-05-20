@@ -1,6 +1,5 @@
 import os
 import requests
-import httpx
 
 # MBTA API key from env (unauthenticated callers are rate-limited to 20 req/min;
 # a registered key raises this to 1000 req/min). Register at https://api-v3.mbta.com/register
@@ -44,21 +43,21 @@ def fetch_lines(get_routes_url):
     payload = {'filter[type]': '0,1', 'fields[route]': _LINE_FIELDS, 'sort': 'id'}
     resp = requests.get(get_routes_url, payload, headers=_HEADERS)
     if resp.status_code != 200:
-        raise MbtaUpstreamError('MBTA returned status {}'.format(resp.status_code))
+        raise MbtaUpstreamError(f'MBTA returned status {resp.status_code}')
     data = resp.json().get('data', [])
     return [_line_row(r) for r in data]
 
 
-async def async_fetch_lines(get_routes_url):
+async def async_fetch_lines(client, get_routes_url):
     """
-    Async version of fetch_lines, for use inside an event loop (e.g., FastAPI).
+    Async version of fetch_lines, using the caller-supplied httpx.AsyncClient
+    so the connection pool can be reused across requests.
     Same return shape and exception contract as fetch_lines.
     """
     payload = {'filter[type]': '0,1', 'fields[route]': _LINE_FIELDS, 'sort': 'id'}
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(get_routes_url, params=payload, headers=_HEADERS)
+    resp = await client.get(get_routes_url, params=payload, headers=_HEADERS)
     if resp.status_code != 200:
-        raise MbtaUpstreamError('MBTA returned status {}'.format(resp.status_code))
+        raise MbtaUpstreamError(f'MBTA returned status {resp.status_code}')
     data = resp.json().get('data', [])
     return [_line_row(r) for r in data]
 
@@ -71,23 +70,22 @@ def fetch_stops(get_stops_url, line_id):
     payload = {'filter[route]': line_id, 'fields[stop]': 'name'}
     resp = requests.get(get_stops_url, payload, headers=_HEADERS)
     if resp.status_code != 200:
-        raise MbtaUpstreamError('MBTA returned status {}'.format(resp.status_code))
+        raise MbtaUpstreamError(f'MBTA returned status {resp.status_code}')
     data = resp.json().get('data', [])
     if not data:
-        raise MbtaNotFoundError("No stops found for line '{}'".format(line_id))
+        raise MbtaNotFoundError(f"No stops found for line '{line_id}'")
     return [{'id': s['id'], 'name': s['attributes']['name']} for s in data]
 
 
-async def async_fetch_stops(get_stops_url, line_id):
+async def async_fetch_stops(client, get_stops_url, line_id):
     """
-    Async version of fetch_stops.
+    Async version of fetch_stops, using the caller-supplied httpx.AsyncClient.
     """
     payload = {'filter[route]': line_id, 'fields[stop]': 'name'}
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(get_stops_url, params=payload, headers=_HEADERS)
+    resp = await client.get(get_stops_url, params=payload, headers=_HEADERS)
     if resp.status_code != 200:
-        raise MbtaUpstreamError('MBTA returned status {}'.format(resp.status_code))
+        raise MbtaUpstreamError(f'MBTA returned status {resp.status_code}')
     data = resp.json().get('data', [])
     if not data:
-        raise MbtaNotFoundError("No stops found for line '{}'".format(line_id))
+        raise MbtaNotFoundError(f"No stops found for line '{line_id}'")
     return [{'id': s['id'], 'name': s['attributes']['name']} for s in data]

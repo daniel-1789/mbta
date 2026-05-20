@@ -30,7 +30,7 @@ def print_all_lines(get_routes_url):
     if not lines:
         return MbtaErrorCodes.NoOutput
     for line in lines:
-        print('ID: {}, NAME: {}'.format(line['id'], line['long_name']))
+        print(f"ID: {line['id']}, NAME: {line['long_name']}")
     return MbtaErrorCodes.Success
 
 
@@ -44,8 +44,7 @@ def print_stops(get_stops_url, line_id):
         print('Problem getting data from MBTA. Please try again or contact support.')
         return MbtaErrorCodes.Non200Resp
     except MbtaNotFoundError:
-        print("No stops found for line ID '{}'. Please verify the line ID and remember they are case-sensitive".format(
-            line_id))
+        print(f"No stops found for line ID '{line_id}'. Please verify the line ID and remember they are case-sensitive")
         return MbtaErrorCodes.NoOutput
     for stop in stops:
         print(stop['name'])
